@@ -3,14 +3,14 @@
   "name": "e-commerce-backend",
   "builds": [
     {
-      "src": "app.js",
+      "src": "dist/app.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/dist/app.js"
+      "dest": "dist/app.js"
     }
   ]
 }
