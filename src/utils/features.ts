@@ -142,33 +142,25 @@ export const getChartData = ({
 const getBase64 = (file: Express.Multer.File) =>
   `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
 
-export const uploadToCloudinary = async (files: Express.Multer.File[]) => {
-  const promises = files.map(async (file) => {
-    return new Promise<UploadApiResponse>((resolve, reject) => {
-      cloudinary.uploader.upload(getBase64(file), (error, result) => {
-        if (error) return reject(error);
-        resolve(result!);
+export const uploadToCloudinary = async (file: Express.Multer.File) => {
+  return new Promise<{ public_id: string; url: string }>((resolve, reject) => {
+    cloudinary.uploader.upload(getBase64(file), (error, result) => {
+      if (error) return reject(error);
+      resolve({
+        public_id: result!.public_id,
+        url: result!.secure_url,
       });
     });
   });
-
-  const result = await Promise.all(promises);
-
-  return result.map((i) => ({
-    public_id: i.public_id,
-    url: i.secure_url,
-  }));
 };
 
-export const deleteFromCloudinary = async (publicIds: string[]) => {
-  const promises = publicIds.map((id) => {
-    return new Promise<void>((resolve, reject) => {
-      cloudinary.uploader.destroy(id, (error, result) => {
-        if (error) return reject(error);
-        resolve();
-      });
+export const deleteFromCloudinary = async (publicId: string) => {
+  return new Promise<void>((resolve, reject) => {
+    cloudinary.uploader.destroy(publicId, (error, result) => {
+      console.log("Deleting from Cloudinary:", { publicId, error, result });
+
+      if (error) return reject(error);
+      resolve();
     });
   });
-
-  await Promise.all(promises);
 };

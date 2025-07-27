@@ -11,7 +11,7 @@ const schema = new mongoose.Schema(
     //     type: String,
     //     required: [true, "Please enter Public ID"],
     // },
-    photos: [
+    photo: 
       {
         public_id: {
           type: String,
@@ -22,7 +22,6 @@ const schema = new mongoose.Schema(
           required: [true, "Please enter URL"],
         },
       },
-    ],
     price: {
       type: Number,
       required: [true, "Please enter Price"],

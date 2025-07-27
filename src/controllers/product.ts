@@ -14,26 +14,19 @@ import {
   invalidateCache,
   uploadToCloudinary,
 } from "../utils/features.js";
-// import { faker } from "@faker-js/faker";
+
 export const newProduct = TryCatch(
   async (req: Request<{}, {}, NewProductRequestBody>, res, next) => {
     const { name, price, stock, category, description } = req.body;
-    const photos = req.files as Express.Multer.File[] | undefined;
+    const photo = req.file as Express.Multer.File | undefined;
 
-    if (!photos) return next(new ErrorHandler("Please add Photo", 400));
-
-    if (photos.length < 1)
-      return next(new ErrorHandler("Please add atleast one Photo", 400));
-
-    if (photos.length > 5)
-      return next(new ErrorHandler("You can only upload 5 Photos", 400));
+    if (!photo) return next(new ErrorHandler("Please add a Photo", 400));
 
     if (!name || !price || !stock || !category || !description)
       return next(new ErrorHandler("Please enter All Fields", 400));
 
-    // Upload Here
-
-    const photosURL = await uploadToCloudinary(photos);
+    // Upload photo to Cloudinary
+    const photoData = await uploadToCloudinary(photo);
 
     await Product.create({
       name,
@@ -41,7 +34,7 @@ export const newProduct = TryCatch(
       description,
       stock,
       category: category.toLowerCase(),
-      photos: photosURL,
+      photo: photoData, // directly assign the object
     });
 
     await invalidateCache({ product: true, admin: true });
@@ -120,23 +113,25 @@ export const getSingleProduct = TryCatch(async (req, res, next) => {
   });
 });
 
+// updateProduct
 export const updateProduct = TryCatch(async (req, res, next) => {
   const { id } = req.params;
   const { name, price, stock, category, description } = req.body;
-  const photos = req.files as Express.Multer.File[] | undefined;
+  const photo = req.file as Express.Multer.File | undefined;
 
   const product = await Product.findById(id);
-
   if (!product) return next(new ErrorHandler("Product Not Found", 404));
 
-  if (photos && photos.length > 0) {
-    const photosURL = await uploadToCloudinary(photos);
+  if (photo) {
+    // Upload new photo
+    const newPhoto = await uploadToCloudinary(photo);
 
-    const ids = product.photos.map((photo) => photo.public_id);
+    if (product.photo?.public_id) {
+      await deleteFromCloudinary(product.photo.public_id);
+    }
 
-    await deleteFromCloudinary(ids);
-
-    product.photos = photosURL as any;
+    // Replace with new one
+    product.photo = newPhoto;
   }
 
   if (name) product.name = name;
@@ -163,12 +158,14 @@ export const deleteProduct = TryCatch(async (req, res, next) => {
   const product = await Product.findById(req.params.id);
   if (!product) return next(new ErrorHandler("Product Not Found", 404));
 
-  const ids = product.photos.map((photo) => photo.public_id);
+  if (product.photo?.public_id) {
+    await deleteFromCloudinary(product.photo.public_id);
+  }
 
-  await deleteFromCloudinary(ids);
-
+  // Delete from DB
   await product.deleteOne();
 
+  // Invalidate relevant cache
   await invalidateCache({
     product: true,
     productId: String(product._id),
